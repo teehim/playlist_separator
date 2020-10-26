@@ -113,7 +113,7 @@ def add_playlist():
     playlist_id = request.args.get('playlist_id', default=None)
     now = datetime.now()
     token = col_token.find_one({"_id": "service"})
-    if token and token['expire_time'] <= now:
+    if token and token['expire_time'] > now:
         access_token = token['access_token']
     else:
         form = {
@@ -126,11 +126,17 @@ def add_playlist():
         r = requests.post('https://accounts.spotify.com/api/token', data=form, headers=headers)
         if r.status_code == 200:
             access_token = r.json()['access_token']
-            col_token.update_one({'_id': 'service'}, {'$set': {'access_token': access_token, 'expire_time': now + timedelta(hours=1)}})
+            if token:
+                col_token.update_one({'_id': 'service'}, {'$set': {'access_token': access_token, 'expire_time': now + timedelta(hours=1)}})
+            else:
+                col_token.insert_one({'_id': 'service', 'access_token': access_token, 'expire_time': now + timedelta(hours=1)})
 
+    headers = {
+        'Authorization': 'Bearer ' + access_token
+    }
     rplaylist = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
     playlist = rplaylist.json()
-    track_list = get_tracks(playlist["id"], headers)
+    track_list = get_tracks(playlist["id"], headers, track_list={})
     track_list = get_track_features(track_list, headers)
 
     playlist_item = {
@@ -148,8 +154,9 @@ def add_playlist():
     else:   
         col_playlist.insert_one(playlist_item)
 
+    return 'success'
+
 def get_tracks(playlist_id, headers, next_url=None, track_list={}):
-    print('get_track',next_url)
     if next_url:
         rtracks = requests.get(next_url, headers=headers)
     else:
@@ -173,7 +180,6 @@ def get_tracks(playlist_id, headers, next_url=None, track_list={}):
 
 
 def get_track_features(track_list, headers, iter_index=0):
-    print('get track feature',iter_index)
     id_list = list(track_list.keys())
     start_index = iter_index*100
     end_index = (iter_index+1)*100 if (iter_index+1)*100 < len(id_list) else len(id_list)
