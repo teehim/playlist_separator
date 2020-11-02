@@ -6,19 +6,22 @@ from pymongo import MongoClient
 from urllib.parse import urlencode
 from config import DefaultConfig
 from datetime import datetime, timedelta
+from flask_cors import CORS
 
 CONFIG = DefaultConfig()
 
 client = MongoClient(host=CONFIG.DB_URL, port=CONFIG.DB_PORT, username=CONFIG.DB_USERNAME, password=CONFIG.DB_PASSWORD, authSource=CONFIG.DB_COL)
-col_playlist = client.bot['playlist']
-col_token = client.bot['token']
+col_playlist = client.playlist['playlist']
+col_token = client.playlist['token']
+col_track = client.playlist['track']
 
 app = Flask(__name__)
+CORS(app)
 
 app.secret_key = b'2aa45112fa0e4d38befc0cbde25006e1'
 client_id = 'ca83153c363a4fbc8fc683647b84831d'
 client_secret = '2aa45112fa0e4d38befc0cbde25006e1'
-redirect_uri = 'https://1a59d5ef6cbe.ngrok.io/callback'
+redirect_uri = 'https://3afea1c4ecb8.ngrok.io/callback'
 
 letters = 'abcdefghijklmnopqrstuvwxyz0123456789'
 stateKey = 'spotify_auth_state'
@@ -43,6 +46,7 @@ def login():
         # 'state':state
     }
     query_str = urlencode(query_str)
+    print(query_str)
 
     response = make_response(redirect('https://accounts.spotify.com/authorize?'+query_str))
     # response.set_cookie(stateKey, state)
@@ -51,9 +55,11 @@ def login():
     return response
 
 
-@app.route('/callback')
-def callback():
-    code = request.args.get('code', default=None)
+@app.route('/login', methods=['POST'])
+def login():
+    # code = request.args.get('code', default=None)
+    print('req',request.json)
+    return 'success'
     # state = request.args.get('state', default=None)
     # storedState = session[stateKey]
     # print(storedState)
@@ -62,75 +68,97 @@ def callback():
     #     return response
     # else:
     # session.pop(stateKey, None)
-    form = {
-        'code': code,
-        'redirect_uri': redirect_uri,
-        'grant_type': 'authorization_code'
-    }
-    auth_str = f'{client_id}:{client_secret}'
-    headers = {
-        'Authorization': 'Basic '+str(base64.b64encode(bytes(auth_str,'utf-8')), "utf-8")
-    }
-    r = requests.post('https://accounts.spotify.com/api/token', data=form, headers=headers)
+    # form = {
+    #     'code': code,
+    #     'redirect_uri': redirect_uri,Sc   
+    #     'grant_type': 'authorization_code'
+    # }
+    # auth_str = f'{client_id}:{client_secret}'
+    # headers = {
+    #     'Authorization': 'Basic '+str(base64.b64encode(bytes(auth_str,'utf-8')), "utf-8")
+    # }
+    # r = requests.post('https://accounts.spotify.com/api/token', data=form, headers=headers)
     
-    if r.status_code == 200:
-        # print(r.json())
-        headers = {
-            'Authorization': 'Bearer ' + r.json()['access_token']
-        }
-        rme = requests.get('https://api.spotify.com/v1/me', headers=headers)
-        user = rme.json()
+    # if r.status_code == 200:
+    #     print(r.json())
+    #     headers = {
+    #         'Authorization': 'Bearer ' + r.json()['access_token']
+    #     }
+    #     rme = requests.get('https://api.spotify.com/v1/me', headers=headers)
+    #     user = rme.json()
 
-        r2 = requests.get('https://api.spotify.com/v1/me/playlists', headers=headers)
-        playlists = r2.json()['items']
-        for playlist in playlists:
-            track_list = get_tracks(playlist["id"], headers)
-            track_list = get_track_features(track_list, headers)
+    #     # r2 = requests.get('https://api.spotify.com/v1/me/playlists', headers=headers)
+    #     # playlists = r2.json()['items']
+    #     # for playlist in playlists:
+    #     #     track_list = get_tracks(playlist["id"], headers, track_list={})
+    #     #     track_list = get_track_features(track_list, headers)
 
-            playlist_item = {
-                '_id': playlist["id"],
-                'name': playlist["name"],
-                'owner': {
-                    'id': user['id'],
-                    'display_name': user['display_name'],
-                    'email': user['email'],
-                    'images': user['images']
-                },
-                'images': playlist['images'],
-                'tracks': list(track_list.values())
-            }
+    #     #     playlist_item = {
+    #     #         '_id': playlist["id"],
+    #     #         'name': playlist["name"],
+    #     #         'owner': {
+    #     #             'id': user['id'],
+    #     #             'display_name': user['display_name'],
+    #     #             'email': user['email'],
+    #     #             'images': user['images']
+    #     #         },
+    #     #         'images': playlist['images'],
+    #     #         'tracks': list(track_list.values())
+    #     #     }
 
-            if col_playlist.find_one({ "_id": playlist["id"] }):
-                col_playlist.update_one({ "_id": playlist["id"] }, {'$set':playlist_item})
-            else:   
-                col_playlist.insert_one(playlist_item)
+    #     #     if col_playlist.find_one({ "_id": playlist["id"] }):
+    #     #         col_playlist.update_one({ "_id": playlist["id"] }, {'$set':playlist_item})
+    #     #     else:   
+    #     #         col_playlist.insert_one(playlist_item)
 
-        return jsonify(r2.json())
+    #     return jsonify(user)
+
+
+@app.route('/create_playlist')
+def create_playlist():
+    # access_token = get_service_token()
+    headers = {
+        'Authorization': 'Bearer ' + 'BQC5jji4F0NmGb109bmhfAXZ8O7qR0u5BVz3_huawvti_Y4wQ1p_PQ5Q4zG0jtXuF0oN3tPkfrA8DGz4lL1hH-56Ih7SvvLa7F1FGGhrfefg7FeCnUBv22ScYe60lINu7GKnHV-M8JdUvV-i6Rrd_qR9bnLtFDUEMBIHiugi31RTSYjah4D4hDrPCnHt1GZCnLZ2Ms97ijs4I-j4EDWVYA'
+    }
+    track_ids = ['spotify:track:2LeLsYwDTlfvWfqgIbxvgG',
+       'spotify:track:0PACdf6vCQee3ICq02EWlf',
+       'spotify:track:5qcwzdhDQjHjmu12gOLjY0',
+       'spotify:track:3p7byaSR5J1he8vvDkxirp',
+       'spotify:track:0AqMAXSzkIRMV0alAddJK8',
+       'spotify:track:3TmMHzw7592o4bwtrSHeYv',
+       'spotify:track:4J3eFXXi2nQqF6MWLprnbR',
+       'spotify:track:2Fxmhks0bxGSBdJ92vM42m',
+       'spotify:track:6IRdLKIyS4p7XNiP8r6rsx',
+       'spotify:track:3Tc57t9l2O8FwQZtQOvPXK',
+       'spotify:track:218AUAkMEZWsVwjPxs80OI',
+       'spotify:track:2mosyIQjuejKlqSsdoI6q4',
+       'spotify:track:2ylVfK4pVfeSV4zxieyT2B',
+       'spotify:track:1ZI0AGxSFv2bW3STGNDhB7',
+       'spotify:track:19QNA6AoLPJvKcf4Oosg2z',
+       'spotify:track:2gmdr7WU3kSGRsDxv4tOqA',
+       'spotify:track:7vA7BaPdYpdJtt8zVJaqy8',
+       'spotify:track:58mtgcQVZ56NgWHKsN94nD']
+
+    track_uris = ','.join(track_ids)
+    playlist_data = {
+        "name": "Bot Gen"
+    }
+    res_pl = requests.post(f'https://api.spotify.com/v1/users/21nrpmngofpue4bu35v3b7moq/playlists', json=playlist_data, headers=headers)
+    pl_id = res_pl.json()['id']
+    print(pl_id)
+    print(track_uris)
+    track_data = {
+        "uris": track_ids
+    }
+    res_tr = requests.post(f'https://api.spotify.com/v1/playlists/{pl_id}/tracks', json=track_data, headers=headers)
+    print(res_tr.json())
+    return jsonify(res_tr.json())
 
 
 @app.route('/add_playlist')
 def add_playlist():
     playlist_id = request.args.get('playlist_id', default=None)
-    now = datetime.now()
-    token = col_token.find_one({"_id": "service"})
-    if token and token['expire_time'] > now:
-        access_token = token['access_token']
-    else:
-        form = {
-            'grant_type': 'client_credentials'
-        }
-        auth_str = f'{client_id}:{client_secret}'
-        headers = {
-            'Authorization': 'Basic '+str(base64.b64encode(bytes(auth_str,'utf-8')), "utf-8")
-        }
-        r = requests.post('https://accounts.spotify.com/api/token', data=form, headers=headers)
-        if r.status_code == 200:
-            access_token = r.json()['access_token']
-            if token:
-                col_token.update_one({'_id': 'service'}, {'$set': {'access_token': access_token, 'expire_time': now + timedelta(hours=1)}})
-            else:
-                col_token.insert_one({'_id': 'service', 'access_token': access_token, 'expire_time': now + timedelta(hours=1)})
-
+    access_token = get_service_token()
     headers = {
         'Authorization': 'Bearer ' + access_token
     }
@@ -156,6 +184,51 @@ def add_playlist():
 
     return 'success'
 
+
+@app.route('/add_playlist_w_cat')
+def add_playlist_w_cat():
+    playlist_id = request.json['playlist_id']
+    
+    update_data = {}
+    if request.json['season']:
+        update_data['season'] = request.json['season']
+
+    if request.json['emotion']:
+        update_data['emotion'] = request.json['emotion']
+
+    access_token = get_service_token()
+    headers = {
+        'Authorization': 'Bearer ' + access_token
+    }
+    rplaylist = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
+    playlist = rplaylist.json()
+    track_list = get_tracks(playlist["id"], headers, track_list={})
+    track_list = get_track_features(track_list, headers)
+
+    # playlist_item = {
+    #     '_id': playlist["id"],
+    #     'name': playlist["name"],
+    #     'owner': "service",
+    #     'images': playlist['images'],
+    #     'tracks': list(track_list.values()),
+    #     'for_train': True
+    # }
+    track_ids = track_list.keys()
+    existing_track_ids = col_track.find({ '_id': {'$in': track_ids} }).distinct('_id')
+    insert_tracks = []
+
+    for track in track_list:
+        if track['_id'] not in existing_track_ids:
+            insert_tracks.append(track)
+
+    if insert_tracks:
+        col_track.insert_many(insert_tracks)
+    
+    col_track.update_many({ '_id': {'$in': track_ids} }, { '$set': update_data })
+
+    return 'success'
+
+
 def get_tracks(playlist_id, headers, next_url=None, track_list={}):
     if next_url:
         rtracks = requests.get(next_url, headers=headers)
@@ -165,7 +238,7 @@ def get_tracks(playlist_id, headers, next_url=None, track_list={}):
     tracks = rtracks.json()
     for track in tracks['items']:
         track_list[track['track']['id']] = {
-            'id': track['track']['id'],
+            '_id': track['track']['id'],
             'name': track['track']['name'],
             'duration_ms': track['track']['duration_ms'],
             'popularity': track['track']['popularity'],
@@ -207,6 +280,41 @@ def get_track_features(track_list, headers, iter_index=0):
         return get_track_features(track_list, headers, iter_index=iter_index)
     else:
         return track_list
+
+
+def get_service_token():
+    now = datetime.now()
+    access_token = None
+    token = col_token.find_one({"_id": "service"})
+    if token and token['expire_time'] > now:
+        access_token = token['access_token']
+    else:
+        form = {
+            'grant_type': 'client_credentials'
+        }
+        auth_str = f'{client_id}:{client_secret}'
+        headers = {
+            'Authorization': 'Basic '+str(base64.b64encode(bytes(auth_str,'utf-8')), "utf-8")
+        }
+        r = requests.post('https://accounts.spotify.com/api/token', data=form, headers=headers)
+        if r.status_code == 200:
+            access_token = r.json()['access_token']
+            if token:
+                col_token.update_one({'_id': 'service'}, {'$set': {'access_token': access_token, 'expire_time': now + timedelta(hours=1)}})
+            else:
+                col_token.insert_one({'_id': 'service', 'access_token': access_token, 'expire_time': now + timedelta(hours=1)})
+
+    return access_token
+
+
+def get_user_token(user_id):
+    now = datetime.now()
+    access_token = None
+    token = col_token.find_one({"_id": user_id})
+    if token and token['expire_time'] > now:
+        access_token = token['access_token']
+    # else:
+
 
 
 if __name__ == '__main__':
