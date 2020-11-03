@@ -55,11 +55,11 @@ def login():
     return response
 
 
-@app.route('/login', methods=['POST'])
-def login():
-    # code = request.args.get('code', default=None)
-    print('req',request.json)
-    return 'success'
+# @app.route('/login', methods=['POST'])
+# def login():
+#     # code = request.args.get('code', default=None)
+#     print('req',request.json)
+#     return 'success'
     # state = request.args.get('state', default=None)
     # storedState = session[stateKey]
     # print(storedState)
@@ -185,15 +185,15 @@ def add_playlist():
     return 'success'
 
 
-@app.route('/add_playlist_w_cat')
+@app.route('/add_playlist_w_cat', methods=['POST'])
 def add_playlist_w_cat():
     playlist_id = request.json['playlist_id']
     
     update_data = {}
-    if request.json['season']:
+    if 'season' in request.json.keys():
         update_data['season'] = request.json['season']
 
-    if request.json['emotion']:
+    if 'emotion' in request.json.keys():
         update_data['emotion'] = request.json['emotion']
 
     access_token = get_service_token()
@@ -204,6 +204,7 @@ def add_playlist_w_cat():
     playlist = rplaylist.json()
     track_list = get_tracks(playlist["id"], headers, track_list={})
     track_list = get_track_features(track_list, headers)
+    print(track_list)
 
     # playlist_item = {
     #     '_id': playlist["id"],
@@ -213,11 +214,11 @@ def add_playlist_w_cat():
     #     'tracks': list(track_list.values()),
     #     'for_train': True
     # }
-    track_ids = track_list.keys()
+    track_ids = list(track_list.keys())
     existing_track_ids = col_track.find({ '_id': {'$in': track_ids} }).distinct('_id')
     insert_tracks = []
 
-    for track in track_list:
+    for track in list(track_list.values()):
         if track['_id'] not in existing_track_ids:
             insert_tracks.append(track)
 
