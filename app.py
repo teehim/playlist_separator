@@ -165,6 +165,7 @@ def add_playlist():
     rplaylist = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
     playlist = rplaylist.json()
     track_list = get_tracks(playlist["id"], headers, track_list={})
+    track_list = get_track_data(track_list, headers)
     track_list = get_track_features(track_list, headers)
 
     playlist_item = {
@@ -203,8 +204,8 @@ def add_playlist_w_cat():
     rplaylist = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
     playlist = rplaylist.json()
     track_list = get_tracks(playlist["id"], headers, track_list={})
+    track_list = get_track_data(track_list, headers)
     track_list = get_track_features(track_list, headers)
-    print(track_list)
 
     # playlist_item = {
     #     '_id': playlist["id"],
@@ -249,6 +250,24 @@ def get_tracks(playlist_id, headers, next_url=None, track_list={}):
 
     if tracks['next']:
         return get_tracks(playlist_id, headers, next_url=tracks['next'], track_list=track_list)
+    else:
+        return track_list
+
+
+def get_track_data(track_list, headers, iter_index=0):
+    id_list = list(track_list.keys())
+    start_index = iter_index*50
+    end_index = (iter_index+1)*50 if (iter_index+1)*50 < len(id_list) else len(id_list)
+    req_id_list = id_list[start_index:end_index]
+
+    rdata = requests.get(f'https://api.spotify.com/v1/tracks/?ids={",".join(req_id_list)}', headers=headers)
+    data = rdata.json()
+    for track in data['tracks']:
+        track_list[track['id']]['release_date'] = track['album']['release_date']
+
+    if end_index != len(id_list):
+        iter_index += 1
+        return get_track_data(track_list, headers, iter_index=iter_index)
     else:
         return track_list
 
