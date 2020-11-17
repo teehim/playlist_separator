@@ -57,65 +57,6 @@ def login():
     return response
 
 
-# @app.route('/login', methods=['POST'])
-# def login():
-#     # code = request.args.get('code', default=None)
-#     print('req',request.json)
-#     return 'success'
-    # state = request.args.get('state', default=None)
-    # storedState = session[stateKey]
-    # print(storedState)
-    # if state == None or state != storedState:
-    #     response = make_response(redirect(url_for('#', error='state_mismatch')))
-    #     return response
-    # else:
-    # session.pop(stateKey, None)
-    # form = {
-    #     'code': code,
-    #     'redirect_uri': redirect_uri,Sc   
-    #     'grant_type': 'authorization_code'
-    # }
-    # auth_str = f'{client_id}:{client_secret}'
-    # headers = {
-    #     'Authorization': 'Basic '+str(base64.b64encode(bytes(auth_str,'utf-8')), "utf-8")
-    # }
-    # r = requests.post('https://accounts.spotify.com/api/token', data=form, headers=headers)
-    
-    # if r.status_code == 200:
-    #     print(r.json())
-    #     headers = {
-    #         'Authorization': 'Bearer ' + r.json()['access_token']
-    #     }
-    #     rme = requests.get('https://api.spotify.com/v1/me', headers=headers)
-    #     user = rme.json()
-
-    #     # r2 = requests.get('https://api.spotify.com/v1/me/playlists', headers=headers)
-    #     # playlists = r2.json()['items']
-    #     # for playlist in playlists:
-    #     #     track_list = get_tracks(playlist["id"], headers, track_list={})
-    #     #     track_list = get_track_features(track_list, headers)
-
-    #     #     playlist_item = {
-    #     #         '_id': playlist["id"],
-    #     #         'name': playlist["name"],
-    #     #         'owner': {
-    #     #             'id': user['id'],
-    #     #             'display_name': user['display_name'],
-    #     #             'email': user['email'],
-    #     #             'images': user['images']
-    #     #         },
-    #     #         'images': playlist['images'],
-    #     #         'tracks': list(track_list.values())
-    #     #     }
-
-    #     #     if col_playlist.find_one({ "_id": playlist["id"] }):
-    #     #         col_playlist.update_one({ "_id": playlist["id"] }, {'$set':playlist_item})
-    #     #     else:   
-    #     #         col_playlist.insert_one(playlist_item)
-
-    #     return jsonify(user)
-
-
 @app.route('/create_playlist')
 def create_playlist():
     # access_token = get_service_token()
@@ -240,20 +181,64 @@ def get_audio_feature():
         'Authorization': 'Bearer ' + access_token
     }
 
-    tracks = list(col_track.find({'audio_feature': None}))
+    tracks = list(col_track.find({'timbre': None}))
     for track in tracks:
         rfeature = requests.get(f'https://api.spotify.com/v1/audio-analysis/{track["_id"]}', headers=headers)
         feature = rfeature.json()
-        update_data = {
-            'audio_feature': feature['track'],
-            'bars': feature['bars'],
-            'beats': feature['beats'],
-            'sections': feature['sections'],
-            'segments': feature['segments'],
-            'tatums': feature['tatums']
-        }
-        col_track.update({'_id': track['_id']}, { '$set': {  } })
-        time.sleep(2)
+        afeature = feature['track']
+        segments = feature['segments']
+
+        duration = afeature['duration']
+        pitch_values = {'C': 0, 'C#':0, 'D':0, 'D#':0, 'E':0 , 'F':0, 'F#':0, 'G':0, 'G#':0, 'A':0, 'A#':0, 'B':0}
+        timbre_values = {'B1': 0, 'B2':0, 'B3':0, 'B4':0, 'B5':0 , 'B6':0, 'B7':0, 'B8':0, 'B9':0, 'B10':0, 'B11':0, 'B12':0}
+
+        for segment in segments:
+            seg_duration = segment['duration']
+            pitches = segment['pitches']
+            pitch_values['C'] += pitches[0] * seg_duration
+            pitch_values['C#'] += pitches[1] * seg_duration
+            pitch_values['D'] += pitches[2] * seg_duration
+            pitch_values['D#'] += pitches[3] * seg_duration
+            pitch_values['E'] += pitches[4] * seg_duration
+            pitch_values['F'] += pitches[5] * seg_duration
+            pitch_values['F#'] += pitches[6] * seg_duration
+            pitch_values['G'] += pitches[7] * seg_duration
+            pitch_values['G#'] += pitches[8] * seg_duration
+            pitch_values['A'] += pitches[9] * seg_duration
+            pitch_values['A#'] += pitches[10] * seg_duration
+            pitch_values['B'] += pitches[11] * seg_duration
+
+            timbres = segment['timbre']
+            timbre_values['B1'] += timbres[0] * seg_duration
+            timbre_values['B2'] += timbres[1] * seg_duration
+            timbre_values['B3'] += timbres[2] * seg_duration
+            timbre_values['B4'] += timbres[3] * seg_duration
+            timbre_values['B5'] += timbres[4] * seg_duration
+            timbre_values['B6'] += timbres[5] * seg_duration
+            timbre_values['B7'] += timbres[6] * seg_duration
+            timbre_values['B8'] += timbres[7] * seg_duration
+            timbre_values['B9'] += timbres[8] * seg_duration
+            timbre_values['B10'] += timbres[9] * seg_duration
+            timbre_values['B11'] += timbres[10] * seg_duration
+            timbre_values['B12'] += timbres[11] * seg_duration
+            
+
+        for note in pitch_values:
+            pitch_values[note] = pitch_values[note] / duration
+
+        for basis in timbre_values:
+            timbre_values[basis] = timbre_values[basis] / duration
+
+        if 'track' in feature:
+            update_data = {
+                'timbre': timbre_values,
+                'pitches': pitch_values
+            }
+            col_track.update({'_id': track['_id']}, { '$set': update_data })
+            print(track['name'] + ' done.')
+            # time.sleep(1)
+
+    return 'success'
 
 
 
