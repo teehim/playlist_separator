@@ -2,6 +2,7 @@ from flask import Flask, render_template, make_response, redirect, url_for, requ
 
 import random
 import requests
+import time
 from pymongo import MongoClient
 from urllib.parse import urlencode
 from config import DefaultConfig
@@ -10,7 +11,8 @@ from flask_cors import CORS
 
 CONFIG = DefaultConfig()
 
-client = MongoClient(host=CONFIG.DB_URL, port=CONFIG.DB_PORT, username=CONFIG.DB_USERNAME, password=CONFIG.DB_PASSWORD, authSource=CONFIG.DB_COL)
+# client = MongoClient(host=CONFIG.DB_URL, port=CONFIG.DB_PORT, username=CONFIG.DB_USERNAME, password=CONFIG.DB_PASSWORD, authSource=CONFIG.DB_COL)
+client = MongoClient("mongodb+srv://teehim-usr:mongoDB@cluster0.driro.mongodb.net/teehim?retryWrites=true&w=majority")
 col_playlist = client.playlist['playlist']
 col_token = client.playlist['token']
 col_track = client.playlist['track']
@@ -231,6 +233,30 @@ def add_playlist_w_cat():
     return 'success'
 
 
+@app.route('/get_audio_feature')
+def get_audio_feature():
+    access_token = get_service_token()
+    headers = {
+        'Authorization': 'Bearer ' + access_token
+    }
+
+    tracks = list(col_track.find({'audio_feature': None}))
+    for track in tracks:
+        rfeature = requests.get(f'https://api.spotify.com/v1/audio-analysis/{track["_id"]}', headers=headers)
+        feature = rfeature.json()
+        update_data = {
+            'audio_feature': feature['track'],
+            'bars': feature['bars'],
+            'beats': feature['beats'],
+            'sections': feature['sections'],
+            'segments': feature['segments'],
+            'tatums': feature['tatums']
+        }
+        col_track.update({'_id': track['_id']}, { '$set': {  } })
+        time.sleep(2)
+
+
+
 def get_tracks(playlist_id, headers, next_url=None, track_list={}):
     if next_url:
         rtracks = requests.get(next_url, headers=headers)
@@ -239,14 +265,15 @@ def get_tracks(playlist_id, headers, next_url=None, track_list={}):
         
     tracks = rtracks.json()
     for track in tracks['items']:
-        track_list[track['track']['id']] = {
-            '_id': track['track']['id'],
-            'name': track['track']['name'],
-            'duration_ms': track['track']['duration_ms'],
-            'popularity': track['track']['popularity'],
-            'explicit': track['track']['explicit'],
-            'artist': track['track']['artists'][0]['name']
-        }
+        if track['track']['id']:
+            track_list[track['track']['id']] = {
+                '_id': track['track']['id'],
+                'name': track['track']['name'],
+                'duration_ms': track['track']['duration_ms'],
+                'popularity': track['track']['popularity'],
+                'explicit': track['track']['explicit'],
+                'artist': track['track']['artists'][0]['name']
+            }
 
     if tracks['next']:
         return get_tracks(playlist_id, headers, next_url=tracks['next'], track_list=track_list)
@@ -323,7 +350,6 @@ def get_service_token():
                 col_token.update_one({'_id': 'service'}, {'$set': {'access_token': access_token, 'expire_time': now + timedelta(hours=1)}})
             else:
                 col_token.insert_one({'_id': 'service', 'access_token': access_token, 'expire_time': now + timedelta(hours=1)})
-
     return access_token
 
 
@@ -338,4 +364,4 @@ def get_user_token(user_id):
 
 
 if __name__ == '__main__':
-   app.run(host='127.0.0.1', port=8888)
+    app.run(host='127.0.0.1', port=8888)
