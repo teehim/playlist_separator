@@ -185,58 +185,58 @@ def get_audio_feature():
     for track in tracks:
         rfeature = requests.get(f'https://api.spotify.com/v1/audio-analysis/{track["_id"]}', headers=headers)
         feature = rfeature.json()
-        afeature = feature['track']
-        segments = feature['segments']
-
-        duration = afeature['duration']
-        pitch_values = {'C': 0, 'C#':0, 'D':0, 'D#':0, 'E':0 , 'F':0, 'F#':0, 'G':0, 'G#':0, 'A':0, 'A#':0, 'B':0}
-        timbre_values = {'B1': 0, 'B2':0, 'B3':0, 'B4':0, 'B5':0 , 'B6':0, 'B7':0, 'B8':0, 'B9':0, 'B10':0, 'B11':0, 'B12':0}
-
-        for segment in segments:
-            seg_duration = segment['duration']
-            pitches = segment['pitches']
-            pitch_values['C'] += pitches[0] * seg_duration
-            pitch_values['C#'] += pitches[1] * seg_duration
-            pitch_values['D'] += pitches[2] * seg_duration
-            pitch_values['D#'] += pitches[3] * seg_duration
-            pitch_values['E'] += pitches[4] * seg_duration
-            pitch_values['F'] += pitches[5] * seg_duration
-            pitch_values['F#'] += pitches[6] * seg_duration
-            pitch_values['G'] += pitches[7] * seg_duration
-            pitch_values['G#'] += pitches[8] * seg_duration
-            pitch_values['A'] += pitches[9] * seg_duration
-            pitch_values['A#'] += pitches[10] * seg_duration
-            pitch_values['B'] += pitches[11] * seg_duration
-
-            timbres = segment['timbre']
-            timbre_values['B1'] += timbres[0] * seg_duration
-            timbre_values['B2'] += timbres[1] * seg_duration
-            timbre_values['B3'] += timbres[2] * seg_duration
-            timbre_values['B4'] += timbres[3] * seg_duration
-            timbre_values['B5'] += timbres[4] * seg_duration
-            timbre_values['B6'] += timbres[5] * seg_duration
-            timbre_values['B7'] += timbres[6] * seg_duration
-            timbre_values['B8'] += timbres[7] * seg_duration
-            timbre_values['B9'] += timbres[8] * seg_duration
-            timbre_values['B10'] += timbres[9] * seg_duration
-            timbre_values['B11'] += timbres[10] * seg_duration
-            timbre_values['B12'] += timbres[11] * seg_duration
-            
-
-        for note in pitch_values:
-            pitch_values[note] = pitch_values[note] / duration
-
-        for basis in timbre_values:
-            timbre_values[basis] = timbre_values[basis] / duration
-
         if 'track' in feature:
+            afeature = feature['track']
+            segments = feature['segments']
+
+            duration = afeature['duration']
+            pitch_values = {'C': 0, 'C#':0, 'D':0, 'D#':0, 'E':0 , 'F':0, 'F#':0, 'G':0, 'G#':0, 'A':0, 'A#':0, 'B':0}
+            timbre_values = {'B1': 0, 'B2':0, 'B3':0, 'B4':0, 'B5':0 , 'B6':0, 'B7':0, 'B8':0, 'B9':0, 'B10':0, 'B11':0, 'B12':0}
+
+            for segment in segments:
+                seg_duration = segment['duration']
+                pitches = segment['pitches']
+                pitch_values['C'] += pitches[0] * seg_duration
+                pitch_values['C#'] += pitches[1] * seg_duration
+                pitch_values['D'] += pitches[2] * seg_duration
+                pitch_values['D#'] += pitches[3] * seg_duration
+                pitch_values['E'] += pitches[4] * seg_duration
+                pitch_values['F'] += pitches[5] * seg_duration
+                pitch_values['F#'] += pitches[6] * seg_duration
+                pitch_values['G'] += pitches[7] * seg_duration
+                pitch_values['G#'] += pitches[8] * seg_duration
+                pitch_values['A'] += pitches[9] * seg_duration
+                pitch_values['A#'] += pitches[10] * seg_duration
+                pitch_values['B'] += pitches[11] * seg_duration
+
+                timbres = segment['timbre']
+                timbre_values['B1'] += timbres[0] * seg_duration
+                timbre_values['B2'] += timbres[1] * seg_duration
+                timbre_values['B3'] += timbres[2] * seg_duration
+                timbre_values['B4'] += timbres[3] * seg_duration
+                timbre_values['B5'] += timbres[4] * seg_duration
+                timbre_values['B6'] += timbres[5] * seg_duration
+                timbre_values['B7'] += timbres[6] * seg_duration
+                timbre_values['B8'] += timbres[7] * seg_duration
+                timbre_values['B9'] += timbres[8] * seg_duration
+                timbre_values['B10'] += timbres[9] * seg_duration
+                timbre_values['B11'] += timbres[10] * seg_duration
+                timbre_values['B12'] += timbres[11] * seg_duration
+                
+
+            for note in pitch_values:
+                pitch_values[note] = pitch_values[note] / duration
+
+            for basis in timbre_values:
+                timbre_values[basis] = timbre_values[basis] / duration
+
             update_data = {
                 'timbre': timbre_values,
                 'pitches': pitch_values
             }
             col_track.update({'_id': track['_id']}, { '$set': update_data })
             print(track['name'] + ' done.')
-            # time.sleep(1)
+        # time.sleep(1)
 
     return 'success'
 
@@ -349,4 +349,4 @@ def get_user_token(user_id):
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8888)
+    app.run(host='127.0.0.1', port=8887)
