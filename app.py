@@ -9,6 +9,7 @@ from config import DefaultConfig
 from datetime import datetime, timedelta
 from flask_cors import CORS
 
+import base64
 CONFIG = DefaultConfig()
 
 # client = MongoClient(host=CONFIG.DB_URL, port=CONFIG.DB_PORT, username=CONFIG.DB_USERNAME, password=CONFIG.DB_PASSWORD, authSource=CONFIG.DB_COL)
@@ -27,7 +28,7 @@ redirect_uri = 'https://3afea1c4ecb8.ngrok.io/callback'
 
 letters = 'abcdefghijklmnopqrstuvwxyz0123456789'
 stateKey = 'spotify_auth_state'
-import base64
+
 
 @app.route('/')
 def index():
